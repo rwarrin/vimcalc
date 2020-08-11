@@ -7,6 +7,8 @@ IF NOT EXIST build mkdir build
 
 pushd build
 
-cl.exe %CompilerFlags% ..\calc\code\calc.cpp /link %LinkerFlags%
+cl.exe %CompilerFlags% /LD ..\calc\code\calc.cpp /link %LinkerFlags% /EXPORT:Calc
+
+cl.exe %CompilerFlags% ..\calc\code\driver.cpp /link %LinkerFlags%
 
 popd

@@ -5,6 +5,8 @@
 
 #include <stdint.h>
 
+#include <math.h>
+
 typedef uint8_t u8;
 typedef uint16_t u16;
 typedef uint32_t u32;
@@ -22,6 +24,9 @@ typedef size_t umm;
 #define Assert(Condition) if(!(Condition)) { *(int *)0 = 0; }
 
 #define InvalidCodePath Assert(!"InvalidCodePath")
+
+#define CALC(name) char * name(char *Expression)
+typedef CALC(calc_function);
 
 #define CALC_H
 #endif

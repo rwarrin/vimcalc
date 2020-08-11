@@ -97,7 +97,9 @@ GetToken(struct tokenizer *Tokenizer)
                 // TODO(rick): Improve this to parse floating point constants
                 // like 1.0f
                 Token.Type = TokenType_Number;
-                while(IsDigit(*Tokenizer->At))
+                while(IsDigit(Tokenizer->At[0]) ||
+                      (Tokenizer->At[0] == '.') ||
+                      (Tokenizer->At[0] == 'f'))
                 {
                     ++Tokenizer->At;
                     Token.Length = Tokenizer->At - Token.Text;
@@ -129,9 +131,6 @@ enum calc_node_type
     CalcNode_Multiply,
     CalcNode_Divide,
     CalcNode_Modulus,
-    CalcNode_BinaryOr,
-    CalcNode_BinaryAnd,
-    CalcNode_BinaryXor,
     CalcNode_Constant,
 
     CalcNode_Variable,
@@ -169,7 +168,7 @@ FreeNode(struct calc_node *Node)
 static calc_node *
 ParseNumber(struct tokenizer *Tokenizer)
 {
-    struct calc_node *Result = 0;
+    struct calc_node *Result = AddNode(CalcNode_Constant);
 
     struct token Token = GetToken(Tokenizer);
     Result->Value = atof(Token.Text);
@@ -202,7 +201,7 @@ ParseMultiplyExpression(struct tokenizer *Tokenizer)
 {
     struct calc_node *Result = 0;
 
-    struct token Token = GetToken(Tokenizer);
+    struct token Token = PeekToken(Tokenizer);
     if((Token.Type == TokenType_Minus) ||
        (Token.Type == TokenType_Number))
     {
@@ -219,6 +218,11 @@ ParseMultiplyExpression(struct tokenizer *Tokenizer)
             GetToken(Tokenizer);
             Result = AddNode(CalcNode_Multiply, Result, ParseNumber(Tokenizer));
         }
+        else if(Token.Type == TokenType_Percent)
+        {
+            GetToken(Tokenizer);
+            Result = AddNode(CalcNode_Modulus, Result, ParseNumber(Tokenizer));
+        }
     }
 
     return(Result);
@@ -229,7 +233,7 @@ ParseAddExpression(struct tokenizer *Tokenizer)
 {
     struct calc_node *Result = 0;
 
-    struct token Token = GetToken(Tokenizer);
+    struct token Token = PeekToken(Tokenizer);
     if((Token.Type == TokenType_Minus) ||
        (Token.Type == TokenType_Number))
     {
@@ -251,36 +255,83 @@ ParseAddExpression(struct tokenizer *Tokenizer)
     return(Result);
 }
 
-static r32
-ParseExpression(struct tokenizer *Tokenizer)
+static r64
+ExecuteCalcNode(struct calc_node *Node)
 {
-    // TODO(rick): Actually parse an expression
-    r32 Result = 0;
-    struct token Token = {};
-    for(;;)
-    {
-        Token = GetToken(Tokenizer);
-        printf("%d (%d) %.*s\n", Token.Type, (u32)Token.Length,
-               (u32)Token.Length, Token.Text);
+    r64 Result = 0.0f;
 
-        if(Token.Type == TokenType_EndOfStream)
+    if(Node)
+    {
+        switch(Node->Type)
         {
-            break;
+            case CalcNode_UnaryMinus:
+            {
+                Result = -(ExecuteCalcNode(Node->Left));
+            } break;
+
+            case CalcNode_Add:
+            {
+                Result = ExecuteCalcNode(Node->Left) + ExecuteCalcNode(Node->Right);
+            } break;
+
+            case CalcNode_Subtract:
+            {
+                Result = ExecuteCalcNode(Node->Left) - ExecuteCalcNode(Node->Right);
+            } break;
+
+            case CalcNode_Multiply:
+            {
+                Result = ExecuteCalcNode(Node->Left) * ExecuteCalcNode(Node->Right);
+            } break;
+
+            case CalcNode_Divide:
+            {
+                Result = ExecuteCalcNode(Node->Left) / ExecuteCalcNode(Node->Right);
+            } break;
+
+            case CalcNode_Modulus:
+            {
+                Result = fmod(ExecuteCalcNode(Node->Left), ExecuteCalcNode(Node->Right));
+            } break;
+
+            case CalcNode_Constant:
+            {
+                Result = Node->Value;
+            } break;
         }
     }
 
-    Assert(Token.Text[0] == 0);
     return(Result);
 }
 
-int
-main(int ArgCount, char **Args)
+static r64
+ParseExpression(struct tokenizer *Tokenizer)
 {
-    printf("Hello World\n");
-    struct tokenizer Tokenizer = {};
+    struct calc_node *Node = ParseAddExpression(Tokenizer);
+    r64 Result = ExecuteCalcNode(Node);
+    printf("Result: %f\n", Result);
 
-    Tokenizer.At = Args[1];
-    ParseExpression(&Tokenizer);
+    FreeNode(Node);
 
-    return(0);
+    return(Result);
 }
+
+static char PermanentMemory[256] = {0};
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+CALC(Calc)
+{
+    struct tokenizer Tokenizer = {};
+    Tokenizer.At = Expression;
+    r64 ComputedResult = ParseExpression(&Tokenizer);
+
+    snprintf(PermanentMemory, ArrayCount(PermanentMemory), "%f", ComputedResult);
+    return(PermanentMemory);
+}
+
+#ifdef __cplusplus
+}
+#endif
