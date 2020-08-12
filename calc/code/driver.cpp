@@ -19,8 +19,11 @@ main(int ArgCount, char **Args)
         calc_function *Calc = (calc_function *)GetProcAddress(CalcLibrary, "Calc");
         if(Calc)
         {
-            char *Result = Calc(Args[1]);
-            printf("%s\n", Result);
+            char ReadBuffer[256] = {0};
+            while(fgets(ReadBuffer, ArrayCount(ReadBuffer), stdin) != 0)
+            {
+                printf("%s\n", Calc(ReadBuffer));
+            }
         }
         else
         {

@@ -14,6 +14,7 @@ enum token_type
     TokenType_Pipe,
     TokenType_Ampersand,
     TokenType_Carat,
+    TokenType_Tilde,
     TokenType_Equals,
     TokenType_Semicolon,
 
@@ -89,6 +90,7 @@ GetToken(struct tokenizer *Tokenizer)
         case '^': { Token.Type = TokenType_Carat; } break;
         case '=': { Token.Type = TokenType_Equals; } break;
         case ';': { Token.Type = TokenType_Semicolon; } break;
+        case '~': { Token.Type = TokenType_Tilde; } break;
         
         default:
         {
@@ -126,13 +128,19 @@ PeekToken(struct tokenizer *Tokenizer)
 enum calc_node_type
 {
     CalcNode_UnaryMinus = 0,
+
     CalcNode_Add,
     CalcNode_Subtract,
     CalcNode_Multiply,
     CalcNode_Divide,
     CalcNode_Modulus,
-    CalcNode_Constant,
 
+    CalcNode_BitwiseAnd,
+    CalcNode_BitwiseOr,
+    CalcNode_BitwiseXor,
+    CalcNode_BitwiseNot,
+
+    CalcNode_Constant,
     CalcNode_Variable,
 };
 struct calc_node
@@ -188,9 +196,48 @@ ParseConstant(struct tokenizer *Tokenizer)
         Result = AddNode(CalcNode_UnaryMinus);
         Result->Left = ParseNumber(Tokenizer);
     }
+    else if(Token.Type == TokenType_Tilde)
+    {
+        Token = GetToken(Tokenizer);
+        Result = AddNode(CalcNode_BitwiseNot);
+        Result->Left = ParseNumber(Tokenizer);
+    }
     else
     {
         Result = ParseNumber(Tokenizer);
+    }
+
+    return(Result);
+}
+
+static calc_node *
+ParseBitwiseExpression(struct tokenizer *Tokenizer)
+{
+    struct calc_node *Result = 0;
+
+    struct token Token = PeekToken(Tokenizer);
+    if((Token.Type == TokenType_Minus) ||
+       (Token.Type == TokenType_Number) ||
+       (Token.Type == TokenType_Tilde))
+    {
+        Result = ParseConstant(Tokenizer);
+
+        struct token Token = PeekToken(Tokenizer);
+        if(Token.Type == TokenType_Ampersand)
+        {
+            GetToken(Tokenizer);
+            Result = AddNode(CalcNode_BitwiseAnd, Result, ParseNumber(Tokenizer));
+        }
+        else if(Token.Type == TokenType_Pipe)
+        {
+            GetToken(Tokenizer);
+            Result = AddNode(CalcNode_BitwiseOr, Result, ParseNumber(Tokenizer));
+        }
+        else if(Token.Type == TokenType_Carat)
+        {
+            GetToken(Tokenizer);
+            Result = AddNode(CalcNode_BitwiseXor, Result, ParseNumber(Tokenizer));
+        }
     }
 
     return(Result);
@@ -203,25 +250,26 @@ ParseMultiplyExpression(struct tokenizer *Tokenizer)
 
     struct token Token = PeekToken(Tokenizer);
     if((Token.Type == TokenType_Minus) ||
-       (Token.Type == TokenType_Number))
+       (Token.Type == TokenType_Number) ||
+       (Token.Type == TokenType_Tilde))
     {
-        Result = ParseConstant(Tokenizer);
+        Result = ParseBitwiseExpression(Tokenizer);
         
         struct token Token = PeekToken(Tokenizer);
         if(Token.Type == TokenType_ForwardSlash)
         {
             GetToken(Tokenizer);
-            Result = AddNode(CalcNode_Divide, Result, ParseNumber(Tokenizer));
+            Result = AddNode(CalcNode_Divide, Result, ParseMultiplyExpression(Tokenizer));
         }
         else if(Token.Type == TokenType_Asterisk)
         {
             GetToken(Tokenizer);
-            Result = AddNode(CalcNode_Multiply, Result, ParseNumber(Tokenizer));
+            Result = AddNode(CalcNode_Multiply, Result, ParseMultiplyExpression(Tokenizer));
         }
         else if(Token.Type == TokenType_Percent)
         {
             GetToken(Tokenizer);
-            Result = AddNode(CalcNode_Modulus, Result, ParseNumber(Tokenizer));
+            Result = AddNode(CalcNode_Modulus, Result, ParseMultiplyExpression(Tokenizer));
         }
     }
 
@@ -235,7 +283,8 @@ ParseAddExpression(struct tokenizer *Tokenizer)
 
     struct token Token = PeekToken(Tokenizer);
     if((Token.Type == TokenType_Minus) ||
-       (Token.Type == TokenType_Number))
+       (Token.Type == TokenType_Number) ||
+       (Token.Type == TokenType_Tilde))
     {
         Result = ParseMultiplyExpression(Tokenizer);
 
@@ -292,6 +341,28 @@ ExecuteCalcNode(struct calc_node *Node)
             case CalcNode_Modulus:
             {
                 Result = fmod(ExecuteCalcNode(Node->Left), ExecuteCalcNode(Node->Right));
+            } break;
+
+            case CalcNode_BitwiseAnd:
+            {
+                Result = (r64)((u64)ExecuteCalcNode(Node->Left) & (u64)ExecuteCalcNode(Node->Right));
+            } break;
+
+            case CalcNode_BitwiseOr:
+            {
+                Result = (r64)((u64)ExecuteCalcNode(Node->Left) | (u64)ExecuteCalcNode(Node->Right));
+            } break;
+
+            case CalcNode_BitwiseXor:
+            {
+                Result = (r64)((u64)ExecuteCalcNode(Node->Left) ^ (u64)ExecuteCalcNode(Node->Right));
+            } break;
+
+            case CalcNode_BitwiseNot:
+            {
+                r64 Value = ExecuteCalcNode(Node->Left);
+                s64 Bits = ~(s64)(Value);
+                Result = (r64)(Bits);
             } break;
 
             case CalcNode_Constant:
