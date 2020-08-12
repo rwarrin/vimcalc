@@ -196,12 +196,6 @@ ParseConstant(struct tokenizer *Tokenizer)
         Result = AddNode(CalcNode_UnaryMinus);
         Result->Left = ParseNumber(Tokenizer);
     }
-    else if(Token.Type == TokenType_Tilde)
-    {
-        Token = GetToken(Tokenizer);
-        Result = AddNode(CalcNode_BitwiseNot);
-        Result->Left = ParseNumber(Tokenizer);
-    }
     else
     {
         Result = ParseNumber(Tokenizer);
@@ -210,39 +204,7 @@ ParseConstant(struct tokenizer *Tokenizer)
     return(Result);
 }
 
-static calc_node *
-ParseBitwiseExpression(struct tokenizer *Tokenizer)
-{
-    struct calc_node *Result = 0;
-
-    struct token Token = PeekToken(Tokenizer);
-    if((Token.Type == TokenType_Minus) ||
-       (Token.Type == TokenType_Number) ||
-       (Token.Type == TokenType_Tilde))
-    {
-        Result = ParseConstant(Tokenizer);
-
-        struct token Token = PeekToken(Tokenizer);
-        if(Token.Type == TokenType_Ampersand)
-        {
-            GetToken(Tokenizer);
-            Result = AddNode(CalcNode_BitwiseAnd, Result, ParseNumber(Tokenizer));
-        }
-        else if(Token.Type == TokenType_Pipe)
-        {
-            GetToken(Tokenizer);
-            Result = AddNode(CalcNode_BitwiseOr, Result, ParseNumber(Tokenizer));
-        }
-        else if(Token.Type == TokenType_Carat)
-        {
-            GetToken(Tokenizer);
-            Result = AddNode(CalcNode_BitwiseXor, Result, ParseNumber(Tokenizer));
-        }
-    }
-
-    return(Result);
-}
-
+static calc_node *ParseBitwiseExpression(struct tokenizer *Tokenizer);
 static calc_node *
 ParseMultiplyExpression(struct tokenizer *Tokenizer)
 {
@@ -253,7 +215,7 @@ ParseMultiplyExpression(struct tokenizer *Tokenizer)
        (Token.Type == TokenType_Number) ||
        (Token.Type == TokenType_Tilde))
     {
-        Result = ParseBitwiseExpression(Tokenizer);
+        Result = ParseConstant(Tokenizer);
         
         struct token Token = PeekToken(Tokenizer);
         if(Token.Type == TokenType_ForwardSlash)
@@ -298,6 +260,47 @@ ParseAddExpression(struct tokenizer *Tokenizer)
         {
             GetToken(Tokenizer);
             Result = AddNode(CalcNode_Subtract, Result, ParseAddExpression(Tokenizer));
+        }
+    }
+
+    return(Result);
+}
+
+static calc_node *
+ParseBitwiseExpression(struct tokenizer *Tokenizer)
+{
+    struct calc_node *Result = 0;
+
+    struct token Token = PeekToken(Tokenizer);
+    if((Token.Type == TokenType_Minus) ||
+       (Token.Type == TokenType_Number) ||
+       (Token.Type == TokenType_Tilde))
+    {
+        if(Token.Type == TokenType_Tilde)
+        {
+            GetToken(Tokenizer);
+            Result = AddNode(CalcNode_BitwiseNot, ParseBitwiseExpression(Tokenizer), 0);
+        }
+        else
+        {
+            Result = ParseAddExpression(Tokenizer);
+
+            struct token Token = PeekToken(Tokenizer);
+            if(Token.Type == TokenType_Ampersand)
+            {
+                GetToken(Tokenizer);
+                Result = AddNode(CalcNode_BitwiseAnd, Result, ParseBitwiseExpression(Tokenizer));
+            }
+            else if(Token.Type == TokenType_Pipe)
+            {
+                GetToken(Tokenizer);
+                Result = AddNode(CalcNode_BitwiseOr, Result, ParseBitwiseExpression(Tokenizer));
+            }
+            else if(Token.Type == TokenType_Carat)
+            {
+                GetToken(Tokenizer);
+                Result = AddNode(CalcNode_BitwiseXor, Result, ParseBitwiseExpression(Tokenizer));
+            }
         }
     }
 
@@ -378,7 +381,7 @@ ExecuteCalcNode(struct calc_node *Node)
 static r64
 ParseExpression(struct tokenizer *Tokenizer)
 {
-    struct calc_node *Node = ParseAddExpression(Tokenizer);
+    struct calc_node *Node = ParseBitwiseExpression(Tokenizer);
     r64 Result = ExecuteCalcNode(Node);
     printf("Result: %f\n", Result);
 
