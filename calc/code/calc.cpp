@@ -17,6 +17,8 @@ enum token_type
     TokenType_Tilde,
     TokenType_Equals,
     TokenType_Semicolon,
+    TokenType_LessThan,
+    TokenType_GreaterThan,
 
     TokenType_Number,
     TokenType_Identifier,
@@ -91,6 +93,8 @@ GetToken(struct tokenizer *Tokenizer)
         case '=': { Token.Type = TokenType_Equals; } break;
         case ';': { Token.Type = TokenType_Semicolon; } break;
         case '~': { Token.Type = TokenType_Tilde; } break;
+        case '<': { Token.Type = TokenType_LessThan; } break;
+        case '>': { Token.Type = TokenType_GreaterThan; } break;
         
         default:
         {
@@ -139,6 +143,8 @@ enum calc_node_type
     CalcNode_BitwiseOr,
     CalcNode_BitwiseXor,
     CalcNode_BitwiseNot,
+    CalcNode_BitwiseLeftShift,
+    CalcNode_BitwiseRightShift,
 
     CalcNode_Constant,
     CalcNode_Variable,
@@ -301,6 +307,30 @@ ParseBitwiseExpression(struct tokenizer *Tokenizer)
                 GetToken(Tokenizer);
                 Result = AddNode(CalcNode_BitwiseXor, Result, ParseBitwiseExpression(Tokenizer));
             }
+            else if(Token.Type == TokenType_LessThan)
+            {
+                GetToken(Tokenizer);
+                Token = PeekToken(Tokenizer);
+                {
+                    if(Token.Type == TokenType_LessThan)
+                    {
+                        GetToken(Tokenizer);
+                        Result = AddNode(CalcNode_BitwiseLeftShift, Result, ParseBitwiseExpression(Tokenizer));
+                    }
+                }
+            }
+            else if(Token.Type == TokenType_GreaterThan)
+            {
+                GetToken(Tokenizer);
+                Token = PeekToken(Tokenizer);
+                {
+                    if(Token.Type == TokenType_GreaterThan)
+                    {
+                        GetToken(Tokenizer);
+                        Result = AddNode(CalcNode_BitwiseRightShift, Result, ParseBitwiseExpression(Tokenizer));
+                    }
+                }
+            }
         }
     }
 
@@ -366,6 +396,16 @@ ExecuteCalcNode(struct calc_node *Node)
                 r64 Value = ExecuteCalcNode(Node->Left);
                 s64 Bits = ~(s64)(Value);
                 Result = (r64)(Bits);
+            } break;
+
+            case CalcNode_BitwiseLeftShift:
+            {
+                Result = (r64)((u64)ExecuteCalcNode(Node->Left) << (u64)ExecuteCalcNode(Node->Right));
+            } break;
+
+            case CalcNode_BitwiseRightShift:
+            {
+                Result = (r64)((u64)ExecuteCalcNode(Node->Left) >> (u64)ExecuteCalcNode(Node->Right));
             } break;
 
             case CalcNode_Constant:
