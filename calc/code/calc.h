@@ -2,6 +2,7 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 #include <stdint.h>
 
@@ -19,6 +20,9 @@ typedef int32_t b32;
 typedef float r32;
 typedef double r64;
 typedef size_t umm;
+
+#define MAX(A, B) ((A) > (B) ? (A) : (B))
+#define MIN(A, B) ((A) < (B) ? (A) : (B))
 
 #define ArrayCount(Array) (sizeof((Array)) / sizeof((Array)[0]))
 #define Assert(Condition) if(!(Condition)) { *(int *)0 = 0; }

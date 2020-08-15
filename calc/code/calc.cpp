@@ -15,10 +15,11 @@ enum token_type
     TokenType_Ampersand,
     TokenType_Carat,
     TokenType_Tilde,
-    TokenType_Equals,
-    TokenType_Semicolon,
     TokenType_LessThan,
     TokenType_GreaterThan,
+
+    TokenType_Equals,
+    TokenType_Semicolon,
 
     TokenType_Number,
     TokenType_Identifier,
@@ -52,6 +53,21 @@ inline b32
 IsDigit(char Character)
 {
     b32 Result = ((Character >= '0') && (Character <= '9'));
+    return(Result);
+}
+
+inline b32
+IsAlpha(char Character)
+{
+    b32 Result = (((Character >= 'a') && (Character <= 'z')) ||
+                  ((Character >= 'A') && (Character <= 'Z')));
+    return(Result);
+}
+
+inline b32
+IsPunctuation(char Character)
+{
+    b32 Result = (Character == '_');
     return(Result);
 }
 
@@ -108,8 +124,20 @@ GetToken(struct tokenizer *Tokenizer)
                       (Tokenizer->At[0] == 'f'))
                 {
                     ++Tokenizer->At;
-                    Token.Length = Tokenizer->At - Token.Text;
                 }
+                Token.Length = Tokenizer->At - Token.Text;
+            }
+            else if(IsAlpha(Character) ||
+                    IsPunctuation(Character))
+            {
+                Token.Type = TokenType_Identifier;
+                while(IsAlpha(Tokenizer->At[0]) ||
+                      IsDigit(Tokenizer->At[0]) ||
+                      IsPunctuation(Tokenizer->At[0]))
+                {
+                    ++Tokenizer->At;
+                }
+                Token.Length = Tokenizer->At - Token.Text;
             }
             else
             {
@@ -126,6 +154,108 @@ PeekToken(struct tokenizer *Tokenizer)
 {
     struct tokenizer Tokenizer2 = *Tokenizer;
     struct token Result = GetToken(&Tokenizer2);
+    return(Result);
+}
+
+#define VARIABLE_SIGNIFICANT_NAME_LENGTH
+struct variable_table_node
+{
+    r64 Value;
+    char Key[16];
+    struct variable_table_node *Next;
+};
+
+struct variable_table
+{
+    struct variable_table_node *Buckets[32];
+};
+
+static struct variable_table VariableTable;
+
+inline u32
+VariableTableKeyLength(u32 Length)
+{
+    u32 Result = MIN(Length, VARIABLE_SIGNIFICANT_NAME_LENGTH - 1);
+    return(Result);
+}
+
+inline u32
+HashKey(char *Key, u32 Length)
+{
+    u32 Result = 5381;
+    
+    while(Length--)
+    {
+        Result = ((Result << 5) + Result) + *Key;
+    }
+
+    return(Result);
+}
+
+inline u32
+VariableTableBucketIndex(char *Key, u32 Length)
+{
+    u32 Result = 0;
+    u32 KeyLength = VariableTableKeyLength(Length);
+    u32 Hash = HashKey(Key, KeyLength);
+    Result = (Hash % ArrayCount(VariableTable.Buckets));
+    return(Result);
+}
+
+static struct variable_table_node * 
+VariableTableFind(char *Key, u32 Length)
+{
+    struct variable_table_node *Result = 0;
+
+    u32 KeyLength = VariableTableKeyLength(Length);
+    u32 BucketIndex = VariableTableBucketIndex(Key, Length);
+    for(struct variable_table_node *Node = VariableTable.Buckets[BucketIndex];
+        Node;
+        Node = Node->Next)
+    {
+        if(strncmp(Key, Node->Key, KeyLength) == 0)
+        {
+            Result = Node;
+            break;
+        }
+    }
+
+    return(Result);
+}
+
+static void
+VariableTableInsert(char *Key, u32 Length, r64 Value)
+{
+    struct variable_table_node *Node = VariableTableFind(Key, Length);
+    if(Node)
+    {
+        Node->Value = Value;
+    }
+    else
+    {
+        u32 KeyLength = VariableTableKeyLength(Length);
+        u32 BucketIndex = VariableTableBucketIndex(Key, Length);
+
+        Node = (struct variable_table_node *)malloc(sizeof(*Node));
+        memcpy(Node->Key, Key, KeyLength);
+        Node->Key[KeyLength] = 0;
+        Node->Value = Value;
+        Node->Next = VariableTable.Buckets[BucketIndex];
+        VariableTable.Buckets[BucketIndex] = Node;
+    }
+}
+
+static struct variable_table_node *
+VariableTableGet(char *Key, u32 Length)
+{
+    struct variable_table_node *Result = 0;
+
+    struct variable_table_node *Node = VariableTableFind(Key, Length);
+    if(Node)
+    {
+        Result = Node;
+    }
+
     return(Result);
 }
 
@@ -151,10 +281,14 @@ enum calc_node_type
 };
 struct calc_node
 {
-    calc_node_type Type;
-    r64 Value;
+    union
+    {
+        r64 R64Value;
+        struct variable_table_node *Variable;
+    };
     struct calc_node *Left;
     struct calc_node *Right;
+    calc_node_type Type;
 };
 
 static struct calc_node *
@@ -162,7 +296,7 @@ AddNode(calc_node_type Type, struct calc_node *Left = 0, struct calc_node *Right
 {
     calc_node *Node = (calc_node *)malloc(sizeof(*Node));
     Node->Type = Type;
-    Node->Value = 0.0;
+    Node->R64Value = 0.0;
     Node->Left = Left;
     Node->Right = Right;
     return(Node);
@@ -179,13 +313,24 @@ FreeNode(struct calc_node *Node)
     }
 }
 
+static r64
+ParseNumberValue(struct tokenizer *Tokenizer)
+{
+    r64 Result = 0;
+
+    struct token Token = GetToken(Tokenizer);
+    Result = atof(Token.Text);
+
+    return(Result);
+}
+
 static calc_node *
 ParseNumber(struct tokenizer *Tokenizer)
 {
     struct calc_node *Result = AddNode(CalcNode_Constant);
 
     struct token Token = GetToken(Tokenizer);
-    Result->Value = atof(Token.Text);
+    Result->R64Value = atof(Token.Text);
 
     return(Result);
 }
@@ -202,6 +347,12 @@ ParseConstant(struct tokenizer *Tokenizer)
         Result = AddNode(CalcNode_UnaryMinus);
         Result->Left = ParseNumber(Tokenizer);
     }
+    else if(Token.Type == TokenType_Identifier)
+    {
+        Token = GetToken(Tokenizer);
+        Result = AddNode(CalcNode_Variable);
+        Result->Variable = VariableTableGet(Token.Text, (u32)Token.Length);
+    }
     else
     {
         Result = ParseNumber(Tokenizer);
@@ -211,6 +362,7 @@ ParseConstant(struct tokenizer *Tokenizer)
 }
 
 static calc_node *ParseParenthesisExpression(struct tokenizer *Tokenizer);
+static calc_node *ParseAddExpression(struct tokenizer *Tokenizer);
 static calc_node *ParseBitwiseExpression(struct tokenizer *Tokenizer);
 static calc_node *
 ParseMultiplyExpression(struct tokenizer *Tokenizer)
@@ -224,6 +376,7 @@ ParseMultiplyExpression(struct tokenizer *Tokenizer)
     }
     else if((Token.Type == TokenType_Minus) ||
        (Token.Type == TokenType_Number) ||
+       (Token.Type == TokenType_Identifier) ||
        (Token.Type == TokenType_Tilde))
     {
         Result = ParseConstant(Tokenizer);
@@ -261,6 +414,7 @@ ParseAddExpression(struct tokenizer *Tokenizer)
     }
     else if((Token.Type == TokenType_Minus) ||
        (Token.Type == TokenType_Number) ||
+       (Token.Type == TokenType_Identifier) ||
        (Token.Type == TokenType_Tilde))
     {
         Result = ParseMultiplyExpression(Tokenizer);
@@ -279,6 +433,27 @@ ParseAddExpression(struct tokenizer *Tokenizer)
     }
 
     return(Result);
+}
+
+static void
+ParseVariableAssignment(struct tokenizer *Tokenizer)
+{
+    struct token Token = PeekToken(Tokenizer);
+    if(Token.Type == TokenType_Identifier)
+    {
+        struct token NameToken = GetToken(Tokenizer);
+        Token = PeekToken(Tokenizer);
+        if(Token.Type == TokenType_Equals)
+        {
+            GetToken(Tokenizer);
+            Token = PeekToken(Tokenizer);
+            if(Token.Type == TokenType_Number)
+            {
+                r64 Value = ParseNumberValue(Tokenizer);
+                VariableTableInsert(NameToken.Text, (u32)NameToken.Length, Value);
+            }
+        }
+    }
 }
 
 static calc_node *
@@ -318,12 +493,25 @@ ParseBitwiseExpression(struct tokenizer *Tokenizer)
     struct calc_node *Result = 0;
 
     struct token Token = PeekToken(Tokenizer);
+    if(Token.Type == TokenType_Identifier)
+    {
+        struct tokenizer TokenizerCopy = *Tokenizer;
+        GetToken(&TokenizerCopy);
+        struct token NextToken = PeekToken(&TokenizerCopy);
+        if(NextToken.Type == TokenType_Equals)
+        {
+            ParseVariableAssignment(Tokenizer);
+            return Result = ParseBitwiseExpression(Tokenizer);
+        }
+    }
+
     if(Token.Type == TokenType_OpenParen)
     {
         Result = ParseParenthesisExpression(Tokenizer);
     }
     else if((Token.Type == TokenType_Minus) ||
        (Token.Type == TokenType_Number) ||
+       (Token.Type == TokenType_Identifier) ||
        (Token.Type == TokenType_Tilde))
     {
         if(Token.Type == TokenType_Tilde)
@@ -452,9 +640,17 @@ ExecuteCalcNode(struct calc_node *Node)
                 Result = (r64)((u64)ExecuteCalcNode(Node->Left) >> (u64)ExecuteCalcNode(Node->Right));
             } break;
 
+            case CalcNode_Variable:
+            {
+                if(Node->Variable)
+                {
+                    Result = Node->Variable->Value;
+                }
+            } break;
+
             case CalcNode_Constant:
             {
-                Result = Node->Value;
+                Result = Node->R64Value;
             } break;
         }
     }
