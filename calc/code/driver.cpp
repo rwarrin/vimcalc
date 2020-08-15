@@ -7,12 +7,6 @@
 int
 main(int ArgCount, char **Args)
 {
-    if(ArgCount != 2)
-    {
-        printf("Usage: %s [expression]\n", Args[0]);
-        return(1);
-    }
-
     HMODULE CalcLibrary = LoadLibraryA("calc.dll");
     if(CalcLibrary)
     {

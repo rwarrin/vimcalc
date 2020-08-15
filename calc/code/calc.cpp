@@ -210,6 +210,7 @@ ParseConstant(struct tokenizer *Tokenizer)
     return(Result);
 }
 
+static calc_node *ParseParenthesisExpression(struct tokenizer *Tokenizer);
 static calc_node *ParseBitwiseExpression(struct tokenizer *Tokenizer);
 static calc_node *
 ParseMultiplyExpression(struct tokenizer *Tokenizer)
@@ -217,7 +218,11 @@ ParseMultiplyExpression(struct tokenizer *Tokenizer)
     struct calc_node *Result = 0;
 
     struct token Token = PeekToken(Tokenizer);
-    if((Token.Type == TokenType_Minus) ||
+    if(Token.Type == TokenType_OpenParen)
+    {
+        Result = ParseParenthesisExpression(Tokenizer);
+    }
+    else if((Token.Type == TokenType_Minus) ||
        (Token.Type == TokenType_Number) ||
        (Token.Type == TokenType_Tilde))
     {
@@ -227,17 +232,17 @@ ParseMultiplyExpression(struct tokenizer *Tokenizer)
         if(Token.Type == TokenType_ForwardSlash)
         {
             GetToken(Tokenizer);
-            Result = AddNode(CalcNode_Divide, Result, ParseBitwiseExpression(Tokenizer));
+            Result = AddNode(CalcNode_Divide, Result, ParseMultiplyExpression(Tokenizer));
         }
         else if(Token.Type == TokenType_Asterisk)
         {
             GetToken(Tokenizer);
-            Result = AddNode(CalcNode_Multiply, Result, ParseBitwiseExpression(Tokenizer));
+            Result = AddNode(CalcNode_Multiply, Result, ParseMultiplyExpression(Tokenizer));
         }
         else if(Token.Type == TokenType_Percent)
         {
             GetToken(Tokenizer);
-            Result = AddNode(CalcNode_Modulus, Result, ParseBitwiseExpression(Tokenizer));
+            Result = AddNode(CalcNode_Modulus, Result, ParseMultiplyExpression(Tokenizer));
         }
     }
 
@@ -250,7 +255,11 @@ ParseAddExpression(struct tokenizer *Tokenizer)
     struct calc_node *Result = 0;
 
     struct token Token = PeekToken(Tokenizer);
-    if((Token.Type == TokenType_Minus) ||
+    if(Token.Type == TokenType_OpenParen)
+    {
+        Result = ParseParenthesisExpression(Tokenizer);
+    }
+    else if((Token.Type == TokenType_Minus) ||
        (Token.Type == TokenType_Number) ||
        (Token.Type == TokenType_Tilde))
     {
@@ -260,14 +269,45 @@ ParseAddExpression(struct tokenizer *Tokenizer)
         if(Token.Type == TokenType_Plus)
         {
             GetToken(Tokenizer);
-            Result = AddNode(CalcNode_Add, Result, ParseBitwiseExpression(Tokenizer));
+            Result = AddNode(CalcNode_Add, Result, ParseAddExpression(Tokenizer));
         }
         else if(Token.Type == TokenType_Minus)
         {
             GetToken(Tokenizer);
-            Result = AddNode(CalcNode_Subtract, Result, ParseBitwiseExpression(Tokenizer));
+            Result = AddNode(CalcNode_Subtract, Result, ParseAddExpression(Tokenizer));
         }
     }
+
+    return(Result);
+}
+
+static calc_node *
+ParseParenthesisExpression(struct tokenizer *Tokenizer)
+{
+    struct calc_node *Result = 0;
+    // TODO(rick): Clean this up
+    GetToken(Tokenizer);
+    struct calc_node *SubExpression = ParseBitwiseExpression(Tokenizer);
+
+    // NOTE(rick): We've pulled out the entire sub expression at this point
+    // and so we're going to insert a number to restart the parser for the
+    // larger expression.
+    Assert(PeekToken(Tokenizer).Type == TokenType_CloseParen);
+    *Tokenizer->At = '1';
+    Result = ParseBitwiseExpression(Tokenizer);
+
+    // NOTE(rick): At this point we've found the reset of the expression and
+    // now we need to insert the subexpression into the tree. Find the last
+    // node on the left, this will be the sentinel '1' we injected into the
+    // stream.
+    struct calc_node *Searcher = Result;
+    while(Searcher->Left)
+    {
+        Searcher = Searcher->Left;
+    }
+    Assert(Searcher->Type == CalcNode_Constant);
+    // NOTE(rick): Replace the sentinel with the sub expression.
+    *Searcher = *SubExpression;
 
     return(Result);
 }
@@ -280,29 +320,7 @@ ParseBitwiseExpression(struct tokenizer *Tokenizer)
     struct token Token = PeekToken(Tokenizer);
     if(Token.Type == TokenType_OpenParen)
     {
-        // TODO(rick): Clean this up
-        GetToken(Tokenizer);
-        struct calc_node *SubExpression = ParseBitwiseExpression(Tokenizer);
-
-        // NOTE(rick): We've pulled out the entire sub expression at this point
-        // and so we're going to insert a number to restart the parser for the
-        // larger expression.
-        Assert(PeekToken(Tokenizer).Type == TokenType_CloseParen);
-        *Tokenizer->At = '1';
-        Result = ParseBitwiseExpression(Tokenizer);
-
-        // NOTE(rick): At this point we've found the reset of the expression and
-        // now we need to insert the subexpression into the tree. Find the last
-        // node on the left, this will be the sentinel '1' we injected into the
-        // stream.
-        struct calc_node *Searcher = Result;
-        while(Searcher->Left)
-        {
-            Searcher = Searcher->Left;
-        }
-        Assert(Searcher->Type == CalcNode_Constant);
-        // NOTE(rick): Replace the sentinel with the sub expression.
-        *Searcher = *SubExpression;
+        Result = ParseParenthesisExpression(Tokenizer);
     }
     else if((Token.Type == TokenType_Minus) ||
        (Token.Type == TokenType_Number) ||
