@@ -3,7 +3,7 @@
 #if NO_MALLOC
 // TODO(rick): 16k is plenty... right?
 static u8 Memory[Kilobytes(16)] = {0};
-struct calc_state CalcState = {0, 0, Memory, Kilobytes(16), 0};
+static struct calc_state CalcState = {0, 0, Memory, Kilobytes(16), 0};
 #endif
 
 #include "tokenizer.cpp"
