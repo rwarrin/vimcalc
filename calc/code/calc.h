@@ -35,6 +35,44 @@ typedef CALC(calc_function);
 #define CALC_RESET(name) void name()
 typedef CALC_RESET(calc_reset_function);
 
+struct calc_node;
+struct variable_table_node;
+struct calc_state
+{
+    struct calc_node *CalcNodeFreeList;
+    struct variable_table_node *VariableTableNodeFreeList;
+    u8 *Memory;
+    umm Size;
+    umm Used;
+};
+
+#define Kilobytes(Value) (Value*1024LL)
+#define PushStruct(CalcState, Type) (Type *)PushSize_(CalcState, sizeof(Type))
+
+void *
+PushSize_(struct calc_state *CalcState, umm Size, u32 Alignment = 8)
+{
+    void *Result = 0;
+
+    umm AlignmentOffset = 0;
+    umm ResultPointer = (umm)CalcState->Memory + CalcState->Used;
+    umm AlignmentMask = Alignment - 1;
+    if(ResultPointer & AlignmentMask)
+    {
+        AlignmentOffset = Alignment - (ResultPointer & AlignmentMask);
+    }
+
+    umm EffectiveSize = Size + AlignmentOffset;
+
+    if(CalcState->Used + EffectiveSize < CalcState->Size)
+    {
+        Result = CalcState->Memory + CalcState->Used + AlignmentOffset;
+        CalcState->Used += EffectiveSize;
+    }
+
+    return(Result);
+}
+
 #include "tokenizer.h"
 #include "expression.h"
 

@@ -1,5 +1,11 @@
 #include "calc.h"
 
+#if NO_MALLOC
+// TODO(rick): 16k is plenty... right?
+static u8 Memory[Kilobytes(16)] = {0};
+struct calc_state CalcState = {0, 0, Memory, Kilobytes(16), 0};
+#endif
+
 #include "tokenizer.cpp"
 
 static char PermanentMemory[256] = {0};
@@ -85,7 +91,20 @@ VariableTableInsert(char *Key, u32 Length, struct calc_node *VarNode)
         u32 KeyLength = VariableTableKeyLength(Length);
         u32 BucketIndex = VariableTableBucketIndex(Key, Length);
 
+#ifndef NO_MALLOC
         Node = (struct variable_table_node *)malloc(sizeof(*Node));
+#else
+        Node = CalcState.VariableTableNodeFreeList;
+        if(Node)
+        {
+            CalcState.VariableTableNodeFreeList = Node->Next;
+            Node->Next = 0;
+        }
+        else
+        {
+            Node = PushStruct(&CalcState, struct variable_table_node);
+        }
+#endif
         memcpy(Node->Key, Key, KeyLength);
         Node->Key[KeyLength] = 0;
         Node->Value = VarNode;
@@ -136,7 +155,13 @@ CALC_RESET(CalcReset)
             Node = Node->Next;
 
             FreeNode(Temp->Value);
+
+#ifndef NO_MALLOC
             free(Temp);
+#else
+            Temp->Next = CalcState.VariableTableNodeFreeList;
+            CalcState.VariableTableNodeFreeList = Temp;
+#endif
         }
     }
 }

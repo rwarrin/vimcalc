@@ -2,7 +2,20 @@
 static struct calc_node *
 AddNode(calc_node_type Type, struct calc_node *Left = 0, struct calc_node *Right = 0)
 {
+#if NO_MALLOC
     calc_node *Node = (calc_node *)malloc(sizeof(*Node));
+#else
+    calc_node *Node = CalcState.CalcNodeFreeList;
+    if(Node)
+    {
+        CalcState.CalcNodeFreeList = Node->Left;
+        Node->Left = 0;
+    }
+    else
+    {
+        Node = PushStruct(&CalcState, struct calc_node);
+    }
+#endif
     Node->Type = Type;
     Node->R64Value = 0.0;
     Node->Left = Left;
@@ -17,7 +30,12 @@ FreeNode(struct calc_node *Node)
     {
         FreeNode(Node->Left);
         FreeNode(Node->Right);
+#ifndef NO_MALLOC
         free(Node);
+#else
+        Node->Left = CalcState.CalcNodeFreeList;
+        CalcState.CalcNodeFreeList = Node;
+#endif
     }
 }
 
