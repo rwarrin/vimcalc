@@ -11,12 +11,18 @@ main(int ArgCount, char **Args)
     if(CalcLibrary)
     {
         calc_function *Calc = (calc_function *)GetProcAddress(CalcLibrary, "Calc");
+        calc_reset_function *Reset = (calc_reset_function *)GetProcAddress(CalcLibrary, "CalcReset");
         if(Calc)
         {
             char ReadBuffer[256] = {0};
             while(fgets(ReadBuffer, ArrayCount(ReadBuffer), stdin) != 0)
             {
                 printf("%s\n", Calc(ReadBuffer));
+            }
+
+            if(Reset)
+            {
+                Reset();
             }
         }
         else

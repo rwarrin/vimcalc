@@ -124,6 +124,23 @@ CALC(Calc)
     return(PermanentMemory);
 }
 
+CALC_RESET(CalcReset)
+{
+    for(u32 BucketIndex = 0;
+        BucketIndex < ArrayCount(VariableTable.Buckets);
+        ++BucketIndex)
+    {
+        for(struct variable_table_node *Node = *(VariableTable.Buckets + BucketIndex); Node; )
+        {
+            struct variable_table_node *Temp = Node;
+            Node = Node->Next;
+
+            FreeNode(Temp->Value);
+            free(Temp);
+        }
+    }
+}
+
 #ifdef __cplusplus
 }
 #endif
