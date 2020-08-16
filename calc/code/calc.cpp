@@ -7,7 +7,7 @@ static char PermanentMemory[256] = {0};
 #define VARIABLE_SIGNIFICANT_NAME_LENGTH
 struct variable_table_node
 {
-    r64 Value;
+    struct calc_node *Value;
     char Key[16];
     struct variable_table_node *Next;
 };
@@ -70,13 +70,15 @@ VariableTableFind(char *Key, u32 Length)
     return(Result);
 }
 
+static void FreeNode(struct calc_node *Node);
 static void
-VariableTableInsert(char *Key, u32 Length, r64 Value)
+VariableTableInsert(char *Key, u32 Length, struct calc_node *VarNode)
 {
     struct variable_table_node *Node = VariableTableFind(Key, Length);
     if(Node)
     {
-        Node->Value = Value;
+        FreeNode(Node->Value);
+        Node->Value = VarNode;
     }
     else
     {
@@ -86,7 +88,7 @@ VariableTableInsert(char *Key, u32 Length, r64 Value)
         Node = (struct variable_table_node *)malloc(sizeof(*Node));
         memcpy(Node->Key, Key, KeyLength);
         Node->Key[KeyLength] = 0;
-        Node->Value = Value;
+        Node->Value = VarNode;
         Node->Next = VariableTable.Buckets[BucketIndex];
         VariableTable.Buckets[BucketIndex] = Node;
     }

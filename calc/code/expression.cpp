@@ -143,9 +143,10 @@ ParseAddExpression(struct tokenizer *Tokenizer)
     return(Result);
 }
 
-static void
+static struct calc_node *
 ParseVariableAssignment(struct tokenizer *Tokenizer)
 {
+    struct calc_node *Result = 0;
     struct token Token = PeekToken(Tokenizer);
     if(Token.Type == TokenType_Identifier)
     {
@@ -155,13 +156,26 @@ ParseVariableAssignment(struct tokenizer *Tokenizer)
         {
             GetToken(Tokenizer);
             Token = PeekToken(Tokenizer);
+#if 0
             if(Token.Type == TokenType_Number)
             {
                 r64 Value = ParseNumberValue(Tokenizer);
                 VariableTableInsert(NameToken.Text, (u32)NameToken.Length, Value);
             }
+#else
+            Result = ParseBitwiseExpression(Tokenizer);
+            Token = PeekToken(Tokenizer);
+            if(Token.Type == TokenType_Semicolon)
+            {
+                GetToken(Tokenizer);
+            }
+
+            VariableTableInsert(NameToken.Text, (u32)NameToken.Length, Result);
+#endif
         }
     }
+
+    return(Result);
 }
 
 static calc_node *
@@ -352,7 +366,7 @@ ExecuteCalcNode(struct calc_node *Node)
             {
                 if(Node->Variable)
                 {
-                    Result = Node->Variable->Value;
+                    Result = ExecuteCalcNode(Node->Variable->Value);
                 }
             } break;
 
