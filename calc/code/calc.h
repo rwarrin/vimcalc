@@ -32,5 +32,8 @@ typedef size_t umm;
 #define CALC(name) char * name(char *Expression)
 typedef CALC(calc_function);
 
+#include "tokenizer.h"
+#include "expression.h"
+
 #define CALC_H
 #endif
