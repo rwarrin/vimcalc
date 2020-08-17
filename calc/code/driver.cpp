@@ -4,27 +4,28 @@
 
 #include "calc.h"
 
+#define test_func(Type, Name) \
+    Type *Name = (Type *)GetProcAddress(CalcLibrary, #Name); \
+    if(Name) \
+    { \
+        while(fgets(ReadBuffer, ArrayCount(ReadBuffer), stdin) != 0) \
+        { \
+            printf("%s\n", Name(ReadBuffer)); \
+        } \
+    }
+
 int
 main(int ArgCount, char **Args)
 {
     HMODULE CalcLibrary = LoadLibraryA("calc.dll");
     if(CalcLibrary)
     {
-        calc_function *Calc = (calc_function *)GetProcAddress(CalcLibrary, "Calc");
-        calc_reset_function *Reset = (calc_reset_function *)GetProcAddress(CalcLibrary, "CalcReset");
-        if(Calc)
-        {
-            char ReadBuffer[256] = {0};
-            while(fgets(ReadBuffer, ArrayCount(ReadBuffer), stdin) != 0)
-            {
-                printf("%s\n", Calc(ReadBuffer));
-            }
-
-            if(Reset)
-            {
-                Reset();
-            }
-        }
+        char ReadBuffer[256] = {0};
+        test_func(calc_function, Calc)
+        //test_func(calc_reset_function, CalcReset)
+        //test_func(calc_to_binary_function, ToBinary)
+        //test_func(calc_to_hex, ToHex)
+        //test_func(calc_from_hex, FromHex)
         else
         {
             fprintf(stderr, "Failed to get proc address\n");

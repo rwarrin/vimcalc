@@ -35,6 +35,15 @@ typedef CALC(calc_function);
 #define CALC_RESET(name) void name()
 typedef CALC_RESET(calc_reset_function);
 
+#define CALC_TO_BINARY(name) char *name(char *Expression)
+typedef CALC_TO_BINARY(calc_to_binary_function);
+
+#define CALC_TO_HEX(name) char *name(char *Expression)
+typedef CALC_TO_HEX(calc_to_hex);
+
+#define CALC_FROM_HEX(name) char *name(char *String)
+typedef CALC_FROM_HEX(calc_from_hex);
+
 struct calc_node;
 struct variable_table_node;
 struct calc_state

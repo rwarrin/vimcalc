@@ -1,9 +1,9 @@
 #include "calc.h"
 
 #if NO_MALLOC
-// TODO(rick): 16k is plenty... right?
-static u8 Memory[Kilobytes(16)] = {0};
-static struct calc_state CalcState = {0, 0, Memory, Kilobytes(16), 0};
+// TODO(rick): 8k is plenty... right?
+static u8 Memory[Kilobytes(8)] = {0};
+static struct calc_state CalcState = {0, 0, Memory, Kilobytes(8), 0};
 #endif
 
 #include "tokenizer.cpp"
@@ -164,6 +164,46 @@ CALC_RESET(CalcReset)
 #endif
         }
     }
+}
+
+CALC_TO_BINARY(ToBinary)
+{
+    struct tokenizer Tokenizer = {};
+    Tokenizer.At = Expression;
+    r64 ComputedResult = ParseExpression(&Tokenizer);
+    s64 Number = (s64)ComputedResult;
+
+    char *At = PermanentMemory;
+    for(s32 Index = 63; Index >= 0; --Index)
+    {
+        *At++ = (Number & ((u64)1  << Index)) ? '1' : '0';
+        if(Index % 8 == 0)
+        {
+            *At++ = ' ';
+        }
+
+    }
+    *At = 0;
+
+    return(PermanentMemory);
+}
+
+CALC_TO_HEX(ToHex)
+{
+    struct tokenizer Tokenizer = {};
+    Tokenizer.At = Expression;
+    r64 ComputedResult = ParseExpression(&Tokenizer);
+    s64 Number = (s64)ComputedResult;
+
+    snprintf(PermanentMemory, sizeof(PermanentMemory), "0x%llX", Number);
+    return(PermanentMemory);
+}
+
+CALC_FROM_HEX(FromHex)
+{
+    s64 Number = (s64)atof(String);
+    snprintf(PermanentMemory, sizeof(PermanentMemory), "%lld", Number);
+    return(PermanentMemory);
 }
 
 #ifdef __cplusplus
