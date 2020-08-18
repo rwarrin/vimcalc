@@ -2,18 +2,18 @@
 static struct calc_node *
 AddNode(calc_node_type Type, struct calc_node *Left = 0, struct calc_node *Right = 0)
 {
-#if NO_MALLOC
+#ifndef NO_MALLOC
     calc_node *Node = (calc_node *)malloc(sizeof(*Node));
 #else
-    calc_node *Node = CalcState.CalcNodeFreeList;
+    calc_node *Node = CalcState->CalcNodeFreeList;
     if(Node)
     {
-        CalcState.CalcNodeFreeList = Node->Left;
+        CalcState->CalcNodeFreeList = Node->Left;
         Node->Left = 0;
     }
     else
     {
-        Node = PushStruct(&CalcState, struct calc_node);
+        Node = PushStruct(CalcState, struct calc_node);
     }
 #endif
     Node->Type = Type;
@@ -33,8 +33,8 @@ FreeNode(struct calc_node *Node)
 #ifndef NO_MALLOC
         free(Node);
 #else
-        Node->Left = CalcState.CalcNodeFreeList;
-        CalcState.CalcNodeFreeList = Node;
+        Node->Left = CalcState->CalcNodeFreeList;
+        CalcState->CalcNodeFreeList = Node;
 #endif
     }
 }
@@ -401,6 +401,7 @@ ExecuteCalcNode(struct calc_node *Node)
 static r64
 ParseExpression(struct tokenizer *Tokenizer)
 {
+    LoadCalcState();
     struct calc_node *Node = ParseBitwiseExpression(Tokenizer);
     r64 Result = ExecuteCalcNode(Node);
     printf("Result: %f\n", Result);

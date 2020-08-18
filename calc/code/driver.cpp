@@ -35,6 +35,22 @@ main(int ArgCount, char **Args)
     {
         fprintf(stderr, "Failed to load library\n");
     }
+    FreeLibrary(CalcLibrary);
+    CalcLibrary = 0;
 
+    CalcLibrary = LoadLibraryA("calc.dll");
+    if(CalcLibrary)
+    {
+        char ReadBuffer[256] = {0};
+        test_func(calc_function, Calc)
+        else
+        {
+            fprintf(stderr, "Failed to get proc address\n");
+        }
+    }
+    else
+    {
+        fprintf(stderr, "Failed to load library\n");
+    }
     return(0);
 }

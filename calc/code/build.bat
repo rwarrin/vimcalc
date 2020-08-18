@@ -8,6 +8,7 @@ IF NOT EXIST build mkdir build
 pushd build
 
 cl.exe %CompilerFlags% /LD ..\calc\code\calc.cpp /link %LinkerFlags% /EXPORT:Calc /EXPORT:CalcReset /EXPORT:ToBinary /EXPORT:ToHex /EXPORT:FromHex
+cl.exe %CompilerFlags% /LD ..\calc\code\calc_memory.cpp /link %LinkerFlags% /EXPORT:LoadCalcMemory
 
 cl.exe %CompilerFlags% ..\calc\code\driver.cpp /link %LinkerFlags%
 

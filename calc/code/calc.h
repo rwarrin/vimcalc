@@ -29,6 +29,9 @@ typedef size_t umm;
 
 #define InvalidCodePath Assert(!"InvalidCodePath")
 
+#define CALC_MEM_LOAD(name) u8 *name(void)
+typedef CALC_MEM_LOAD(calc_mem_load_function);
+
 #define CALC(name) char * name(char *Expression)
 typedef CALC(calc_function);
 
@@ -48,6 +51,7 @@ struct calc_node;
 struct variable_table_node;
 struct calc_state
 {
+    b32 Initialized;
     struct calc_node *CalcNodeFreeList;
     struct variable_table_node *VariableTableNodeFreeList;
     u8 *Memory;

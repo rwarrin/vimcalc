@@ -2,9 +2,12 @@
 
 #if NO_MALLOC
 // TODO(rick): 8k is plenty... right?
-static u8 Memory[Kilobytes(8)] = {0};
-static struct calc_state CalcState = {0, 0, Memory, Kilobytes(8), 0};
+//static u8 Memory[Kilobytes(8)] = {0};
+//static struct calc_state CalcState = {0, 0, Memory, Kilobytes(8), 0};
 #endif
+
+#include <windows.h>
+
 
 #include "tokenizer.cpp"
 
@@ -23,7 +26,44 @@ struct variable_table
     struct variable_table_node *Buckets[32];
 };
 
-static struct variable_table VariableTable;
+static struct variable_table *VariableTable;
+
+static struct calc_state *CalcState;
+struct memory_map
+{
+    struct calc_state CalcState;
+    struct variable_table VariableTable;
+    u8 *Memory;
+};
+static u8 *GlobalMemory = 0;
+static void LoadCalcState()
+{
+    HMODULE CalcMemLibrary = LoadLibraryA("calc_memory.dll");
+    calc_mem_load_function *LoadCalcMemory = (calc_mem_load_function *)GetProcAddress(CalcMemLibrary, "LoadCalcMemory");
+    if(LoadCalcMemory)
+    {
+        GlobalMemory = LoadCalcMemory();
+        b32 Initialized = *(b32 *)GlobalMemory;
+
+        struct memory_map *Map = (struct memory_map *)GlobalMemory;
+        CalcState = &Map->CalcState;
+        VariableTable = &Map->VariableTable;
+
+        if(Initialized)
+        {
+            FreeLibrary(CalcMemLibrary);
+        }
+        else
+        {
+            CalcState->Initialized = true;
+            CalcState->CalcNodeFreeList = 0;
+            CalcState->VariableTableNodeFreeList = 0;
+            CalcState->Size = Kilobytes(8) - (sizeof(struct calc_state) + sizeof(struct variable_table));
+            CalcState->Used = 0;
+            CalcState->Memory = GlobalMemory + (sizeof(struct calc_state) + sizeof(struct variable_table));
+        }
+    }
+}
 
 inline u32
 VariableTableKeyLength(u32 Length)
@@ -51,7 +91,7 @@ VariableTableBucketIndex(char *Key, u32 Length)
     u32 Result = 0;
     u32 KeyLength = VariableTableKeyLength(Length);
     u32 Hash = HashKey(Key, KeyLength);
-    Result = (Hash % ArrayCount(VariableTable.Buckets));
+    Result = (Hash % ArrayCount(VariableTable->Buckets));
     return(Result);
 }
 
@@ -62,7 +102,7 @@ VariableTableFind(char *Key, u32 Length)
 
     u32 KeyLength = VariableTableKeyLength(Length);
     u32 BucketIndex = VariableTableBucketIndex(Key, Length);
-    for(struct variable_table_node *Node = VariableTable.Buckets[BucketIndex];
+    for(struct variable_table_node *Node = VariableTable->Buckets[BucketIndex];
         Node;
         Node = Node->Next)
     {
@@ -94,22 +134,22 @@ VariableTableInsert(char *Key, u32 Length, struct calc_node *VarNode)
 #ifndef NO_MALLOC
         Node = (struct variable_table_node *)malloc(sizeof(*Node));
 #else
-        Node = CalcState.VariableTableNodeFreeList;
+        Node = CalcState->VariableTableNodeFreeList;
         if(Node)
         {
-            CalcState.VariableTableNodeFreeList = Node->Next;
+            CalcState->VariableTableNodeFreeList = Node->Next;
             Node->Next = 0;
         }
         else
         {
-            Node = PushStruct(&CalcState, struct variable_table_node);
+            Node = PushStruct(CalcState, struct variable_table_node);
         }
 #endif
         memcpy(Node->Key, Key, KeyLength);
         Node->Key[KeyLength] = 0;
         Node->Value = VarNode;
-        Node->Next = VariableTable.Buckets[BucketIndex];
-        VariableTable.Buckets[BucketIndex] = Node;
+        Node->Next = VariableTable->Buckets[BucketIndex];
+        VariableTable->Buckets[BucketIndex] = Node;
     }
 }
 
@@ -146,10 +186,10 @@ CALC(Calc)
 CALC_RESET(CalcReset)
 {
     for(u32 BucketIndex = 0;
-        BucketIndex < ArrayCount(VariableTable.Buckets);
+        BucketIndex < ArrayCount(VariableTable->Buckets);
         ++BucketIndex)
     {
-        for(struct variable_table_node *Node = *(VariableTable.Buckets + BucketIndex); Node; )
+        for(struct variable_table_node *Node = *(VariableTable->Buckets + BucketIndex); Node; )
         {
             struct variable_table_node *Temp = Node;
             Node = Node->Next;
@@ -159,8 +199,8 @@ CALC_RESET(CalcReset)
 #ifndef NO_MALLOC
             free(Temp);
 #else
-            Temp->Next = CalcState.VariableTableNodeFreeList;
-            CalcState.VariableTableNodeFreeList = Temp;
+            Temp->Next = CalcState->VariableTableNodeFreeList;
+            CalcState->VariableTableNodeFreeList = Temp;
 #endif
         }
     }
