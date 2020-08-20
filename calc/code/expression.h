@@ -32,5 +32,7 @@ struct calc_node
     calc_node_type Type;
 };
 
+static void FreeNode(struct calc_node *Node);
+
 #define CALC_EXPRESSION_H
 #endif

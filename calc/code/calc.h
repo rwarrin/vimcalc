@@ -47,6 +47,9 @@ typedef CALC_TO_HEX(calc_to_hex);
 #define CALC_FROM_HEX(name) char *name(char *String)
 typedef CALC_FROM_HEX(calc_from_hex);
 
+#define CALC_MEM_RESET(name) void name(void)
+typedef CALC_MEM_RESET(calc_mem_reset_function);
+
 struct calc_node;
 struct variable_table_node;
 struct calc_state
@@ -85,6 +88,28 @@ PushSize_(struct calc_state *CalcState, umm Size, u32 Alignment = 8)
 
     return(Result);
 }
+
+#define VARIABLE_SIGNIFICANT_NAME_LENGTH 16
+struct variable_table_node
+{
+    struct calc_node *Value;
+    char Key[VARIABLE_SIGNIFICANT_NAME_LENGTH];
+    struct variable_table_node *Next;
+};
+
+struct variable_table
+{
+    struct variable_table_node *Buckets[32];
+};
+
+struct memory_map
+{
+    struct calc_state CalcState;
+    struct variable_table VariableTable;
+    u8 *Memory;
+};
+
+#define STORAGE_MEMORY_SIZE Kilobytes(32)
 
 #include "tokenizer.h"
 #include "expression.h"

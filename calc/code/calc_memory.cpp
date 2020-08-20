@@ -1,7 +1,7 @@
 
 #include "calc.h"
 
-static u8 Memory[Kilobytes(8)] = {0};
+static u8 Memory[STORAGE_MEMORY_SIZE] = {0};
 
 #ifdef __cplusplus
 extern "C" {

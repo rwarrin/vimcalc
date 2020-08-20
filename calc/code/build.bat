@@ -1,7 +1,10 @@
 @echo off
 
-SET CompilerFlags=-DNO_MALLOC=1 /nologo /Z7 /Od /Oi /fp:fast /FC -WX -W4 -D_CRT_SECURE_NO_WARNINGS -wd4100 -wd4505 -wd4456
+SET CompilerFlags=/nologo /Z7 /Od /Oi /fp:fast /FC /MTd -WX -W4 -D_CRT_SECURE_NO_WARNINGS -wd4100 -wd4505 -wd4456
 SET LinkerFlags=/incremental:no /opt:ref
+
+REM SET CompilerFlags=/nologo /O2 /Oi /fp:precise /FC /MT -D_CRT_SECURE_NO_WARNINGS 
+REM SET LinkerFlags=/incremental:no /opt:ref
 
 IF NOT EXIST build mkdir build
 

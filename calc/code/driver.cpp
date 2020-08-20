@@ -4,8 +4,10 @@
 
 #include "calc.h"
 
+#define get_func(Type, Name) \
+    Type *Name = (Type *)GetProcAddress(CalcLibrary, #Name);
 #define test_func(Type, Name) \
-    Type *Name = (Type *)GetProcAddress(CalcLibrary, #Name); \
+    get_func(Type, Name) \
     if(Name) \
     { \
         while(fgets(ReadBuffer, ArrayCount(ReadBuffer), stdin) != 0) \
@@ -43,9 +45,10 @@ main(int ArgCount, char **Args)
     {
         char ReadBuffer[256] = {0};
         test_func(calc_function, Calc)
-        else
+        get_func(calc_mem_reset_function, CalcReset);
+        CalcReset();
         {
-            fprintf(stderr, "Failed to get proc address\n");
+            test_func(calc_function, Calc)
         }
     }
     else
