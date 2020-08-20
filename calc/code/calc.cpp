@@ -18,7 +18,7 @@ InitCalcState(struct calc_state *State, u8 *Memory)
     State->VariableTableNodeFreeList = 0;
     State->Size = STORAGE_MEMORY_SIZE - HeadersSize;
     State->Used = 0;
-    State->Memory = GlobalMemory + HeadersSize;
+    State->Memory = Memory + HeadersSize;
 }
 
 static void
@@ -203,11 +203,20 @@ CALC_FROM_HEX(FromHex)
 
 CALC_MEM_RESET(CalcReset)
 {
-    if(GlobalMemory)
-    {
-        memset(GlobalMemory, 0, STORAGE_MEMORY_SIZE);
-        InitCalcState(CalcState, GlobalMemory);
-    }
+    LoadCalcState();
+    memset(GlobalMemory, 0, STORAGE_MEMORY_SIZE);
+    InitCalcState(CalcState, GlobalMemory);
+}
+
+CALC_INFO(Info)
+{
+    LoadCalcState();
+    snprintf(PermanentMemory, ArrayCount(PermanentMemory),
+             "Init: %d, Node FL: %p, VT FL: %p, M: %p, Size: %zd, Used: %zd",
+             CalcState->Initialized, CalcState->CalcNodeFreeList,
+             CalcState->VariableTableNodeFreeList, CalcState->Memory,
+             CalcState->Size, CalcState->Used);
+    return(PermanentMemory);
 }
 
 #ifdef __cplusplus
