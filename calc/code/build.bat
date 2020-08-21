@@ -1,6 +1,6 @@
 @echo off
 
-SET CompilerFlags=/nologo /Z7 /Od /Oi /fp:fast /FC /MTd -WX -W4 -D_CRT_SECURE_NO_WARNINGS -wd4100 -wd4505 -wd4456
+SET CompilerFlags=/nologo /Z7 /Od /Oi /fp:fast /FC /MTd -WX -W4 -D_CRT_SECURE_NO_WARNINGS -wd4100 -wd4505 -wd4456 -wd4611
 SET LinkerFlags=/incremental:no /opt:ref
 
 REM SET CompilerFlags=/nologo /O2 /Oi /fp:precise /FC /MT -D_CRT_SECURE_NO_WARNINGS 

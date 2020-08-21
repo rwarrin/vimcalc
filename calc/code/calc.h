@@ -3,7 +3,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-
+#include <setjmp.h>
+#include <signal.h>
 #include <stdint.h>
 
 #include <math.h>
@@ -49,6 +50,11 @@ typedef CALC_MEM_RESET(calc_mem_reset_function);
 
 #define CALC_INFO(name) char *name(void)
 typedef CALC_INFO(calc_info_function);
+
+enum excep_type
+{
+    EXCEPTYPE_OUT_OF_MEMORY = 1,
+};
 
 struct calc_node;
 struct variable_table_node;
@@ -108,6 +114,8 @@ struct memory_map
     struct variable_table VariableTable;
     u8 *Memory;
 };
+
+jmp_buf ErrorJump;
 
 #define STORAGE_MEMORY_SIZE Kilobytes(32)
 

@@ -11,6 +11,10 @@ AddNode(calc_node_type Type, struct calc_node *Left = 0, struct calc_node *Right
     else
     {
         Node = PushStruct(CalcState, struct calc_node);
+        if(!Node)
+        {
+            longjmp(ErrorJump, EXCEPTYPE_OUT_OF_MEMORY);
+        }
     }
     Node->Type = Type;
     Node->R64Value = 0.0;
@@ -63,7 +67,7 @@ ParseConstant(struct tokenizer *Tokenizer)
     {
         Token = GetToken(Tokenizer);
         Result = AddNode(CalcNode_UnaryMinus);
-        Result->Left = ParseNumber(Tokenizer);
+        Result->Left = ParseConstant(Tokenizer);
     }
     else if(Token.Type == TokenType_Identifier)
     {
@@ -393,10 +397,10 @@ static r64
 ParseExpression(struct tokenizer *Tokenizer)
 {
     LoadCalcState();
+
     struct calc_node *Node = ParseBitwiseExpression(Tokenizer);
     r64 Result = ExecuteCalcNode(Node);
     printf("Result: %f\n", Result);
-
     FreeNode(Node);
 
     return(Result);

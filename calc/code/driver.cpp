@@ -22,12 +22,21 @@ main(int ArgCount, char **Args)
     HMODULE CalcLibrary = LoadLibraryA("calc.dll");
     if(CalcLibrary)
     {
-        char ReadBuffer[256] = {0};
-        test_func(calc_function, Calc)
         //test_func(calc_reset_function, CalcReset)
         //test_func(calc_to_binary_function, ToBinary)
         //test_func(calc_to_hex, ToHex)
         //test_func(calc_from_hex, FromHex)
+        get_func(calc_info_function, Info);
+        get_func(calc_function, Calc)
+        char ReadBuffer[256] = {0};
+        if(Calc && Info)
+        {
+            while(fgets(ReadBuffer, ArrayCount(ReadBuffer), stdin) != 0)
+            {
+                printf("%s\n", Calc(ReadBuffer));
+                printf("%s\n", Info());
+            }
+        }
         else
         {
             fprintf(stderr, "Failed to get proc address\n");
@@ -37,23 +46,7 @@ main(int ArgCount, char **Args)
     {
         fprintf(stderr, "Failed to load library\n");
     }
-    FreeLibrary(CalcLibrary);
-    CalcLibrary = 0;
 
-    CalcLibrary = LoadLibraryA("calc.dll");
-    if(CalcLibrary)
-    {
-        char ReadBuffer[256] = {0};
-        test_func(calc_function, Calc)
-        get_func(calc_mem_reset_function, CalcReset);
-        CalcReset();
-        {
-            test_func(calc_function, Calc)
-        }
-    }
-    else
-    {
-        fprintf(stderr, "Failed to load library\n");
-    }
+    FreeLibrary(CalcLibrary);
     return(0);
 }

@@ -56,6 +56,7 @@ VariableTableKeyLength(u32 Length)
 inline u32
 HashKey(char *Key, u32 Length)
 {
+    // TODO(rick): Better hash function!
     u32 Result = 5381;
     
     while(Length--)
@@ -153,11 +154,30 @@ extern "C" {
 
 CALC(Calc)
 {
-    struct tokenizer Tokenizer = {};
-    Tokenizer.At = Expression;
-    r64 ComputedResult = ParseExpression(&Tokenizer);
+    u32 ErrorCode = 0;
+    if((ErrorCode = setjmp(ErrorJump)) == 0)
+    {
+        struct tokenizer Tokenizer = {};
+        Tokenizer.At = Expression;
+        r64 ComputedResult = ParseExpression(&Tokenizer);
 
-    snprintf(PermanentMemory, ArrayCount(PermanentMemory), "%f", ComputedResult);
+        snprintf(PermanentMemory, ArrayCount(PermanentMemory), "%f", ComputedResult);
+    }
+    else
+    {
+        switch(ErrorCode)
+        {
+            case EXCEPTYPE_OUT_OF_MEMORY:
+            {
+                snprintf(PermanentMemory, ArrayCount(PermanentMemory), "Out of memory");
+            } break;
+            default:
+            {
+                snprintf(PermanentMemory, ArrayCount(PermanentMemory), "Unknown error occurred");
+            } break;
+        }
+    }
+
     return(PermanentMemory);
 }
 
