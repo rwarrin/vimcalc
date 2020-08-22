@@ -379,7 +379,20 @@ ExecuteCalcNode(struct calc_node *Node)
             {
                 if(Node->Variable)
                 {
-                    Result = ExecuteCalcNode(Node->Variable->Value);
+                    // NOTE(rick): This uses structured exception handling, this
+                    // is specific to Microsoft.
+                    // TODO(rick): Guard this with platform spcific defines.
+                    // TODO(rick): Implement linux signal handlers to fix stack
+                    // overflow situations.
+                    __try
+                    {
+                        Result = ExecuteCalcNode(Node->Variable->Value);
+                    }
+                    __except((GetExceptionCode() == EXCEPTION_STACK_OVERFLOW) ? EXCEPTION_EXECUTE_HANDLER : EXCEPTION_CONTINUE_SEARCH)
+                    {
+                        printf("Caught stack overflow\n");
+                        longjmp(ErrorJump, EXCEPTYPE_INFINITE_RECURSION);
+                    }
                 }
             } break;
 
@@ -393,6 +406,19 @@ ExecuteCalcNode(struct calc_node *Node)
     return(Result);
 }
 
+#if 0
+static void
+StackOverflowSignalHandler(s32 Signal)
+{
+    if(Signal == SIGILL)
+    {
+        longjmp(ErrorJump, EXCEPTYPE_INFINITE_RECURSION);
+    }
+}
+signal(SIGILL, StackOverflowSignalHandler);
+signal(SIGILL, SIG_DFL);
+#endif
+
 static r64
 ParseExpression(struct tokenizer *Tokenizer)
 {
@@ -401,6 +427,7 @@ ParseExpression(struct tokenizer *Tokenizer)
     struct calc_node *Node = ParseBitwiseExpression(Tokenizer);
     r64 Result = ExecuteCalcNode(Node);
     printf("Result: %f\n", Result);
+
     FreeNode(Node);
 
     return(Result);

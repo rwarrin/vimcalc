@@ -6,6 +6,7 @@
 #include <setjmp.h>
 #include <signal.h>
 #include <stdint.h>
+#include <malloc.h>
 
 #include <math.h>
 
@@ -54,6 +55,7 @@ typedef CALC_INFO(calc_info_function);
 enum excep_type
 {
     EXCEPTYPE_OUT_OF_MEMORY = 1,
+    EXCEPTYPE_INFINITE_RECURSION,
 };
 
 struct calc_node;

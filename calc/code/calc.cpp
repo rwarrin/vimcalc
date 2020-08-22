@@ -171,9 +171,24 @@ CALC(Calc)
             {
                 snprintf(PermanentMemory, ArrayCount(PermanentMemory), "Out of memory");
             } break;
+            case EXCEPTYPE_INFINITE_RECURSION:
+            {
+                snprintf(PermanentMemory, ArrayCount(PermanentMemory), "Infinite recursion detected");
+                s32 res = _resetstkoflw();
+                if(res)
+                {
+                    printf("Stack reset succeeded\n");
+                }
+                else
+                {
+                    // TODO(rick): Stack is permanently trashed at this point,
+                    // how should we handle this? Force reset? Warn user?
+                    printf("Stack reset failed\n");
+                }
+            } break;
             default:
             {
-                snprintf(PermanentMemory, ArrayCount(PermanentMemory), "Unknown error occurred");
+                snprintf(PermanentMemory, ArrayCount(PermanentMemory), "An unknown error occurred");
             } break;
         }
     }
