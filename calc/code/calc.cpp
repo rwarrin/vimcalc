@@ -145,6 +145,14 @@ VariableTableGet(char *Key, u32 Length)
     return(Result);
 }
 
+static b32 GlobalErrorFlag;
+static void
+DisplayErrorMessage(char *Message)
+{
+    GlobalErrorFlag = true;
+    snprintf(PermanentMemory, ArrayCount(PermanentMemory), "%s", Message);
+}
+
 #include "expression.cpp"
 
 
@@ -158,7 +166,10 @@ CALC(Calc)
     Tokenizer.At = Expression;
     r64 ComputedResult = ParseExpression(&Tokenizer);
 
-    snprintf(PermanentMemory, ArrayCount(PermanentMemory), "%f", ComputedResult);
+    if(!GlobalErrorFlag)
+    {
+        snprintf(PermanentMemory, ArrayCount(PermanentMemory), "%f", ComputedResult);
+    }
 
     return(PermanentMemory);
 }

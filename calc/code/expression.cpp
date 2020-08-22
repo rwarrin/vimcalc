@@ -440,11 +440,11 @@ ParseExpression(struct tokenizer *Tokenizer)
         {
             case EXCEPTYPE_OUT_OF_MEMORY:
             {
-                snprintf(PermanentMemory, ArrayCount(PermanentMemory), "Out of memory");
+                DisplayErrorMessage("Out of memory");
             } break;
             case EXCEPTYPE_INFINITE_RECURSION:
             {
-                snprintf(PermanentMemory, ArrayCount(PermanentMemory), "Infinite recursion detected");
+                DisplayErrorMessage("Infinite recursion detected");
                 s32 res = _resetstkoflw();
                 if(res)
                 {
@@ -459,7 +459,7 @@ ParseExpression(struct tokenizer *Tokenizer)
             } break;
             default:
             {
-                snprintf(PermanentMemory, ArrayCount(PermanentMemory), "An unknown error occurred");
+                DisplayErrorMessage("An unknown error occurred");
             } break;
         }
     }
