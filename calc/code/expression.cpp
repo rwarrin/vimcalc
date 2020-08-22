@@ -424,11 +424,45 @@ ParseExpression(struct tokenizer *Tokenizer)
 {
     LoadCalcState();
 
-    struct calc_node *Node = ParseBitwiseExpression(Tokenizer);
-    r64 Result = ExecuteCalcNode(Node);
-    printf("Result: %f\n", Result);
+    r64 Result = 0.0f;
+    u32 ErrorCode = 0;
+    if((ErrorCode = setjmp(ErrorJump)) == 0)
+    {
+        struct calc_node *Node = ParseBitwiseExpression(Tokenizer);
+        Result = ExecuteCalcNode(Node);
+        printf("Result: %f\n", Result);
 
-    FreeNode(Node);
+        FreeNode(Node);
+    }
+    else
+    {
+        switch(ErrorCode)
+        {
+            case EXCEPTYPE_OUT_OF_MEMORY:
+            {
+                snprintf(PermanentMemory, ArrayCount(PermanentMemory), "Out of memory");
+            } break;
+            case EXCEPTYPE_INFINITE_RECURSION:
+            {
+                snprintf(PermanentMemory, ArrayCount(PermanentMemory), "Infinite recursion detected");
+                s32 res = _resetstkoflw();
+                if(res)
+                {
+                    printf("Stack reset succeeded\n");
+                }
+                else
+                {
+                    // TODO(rick): Stack is permanently trashed at this point,
+                    // how should we handle this? Force reset? Warn user?
+                    printf("Stack reset failed\n");
+                }
+            } break;
+            default:
+            {
+                snprintf(PermanentMemory, ArrayCount(PermanentMemory), "An unknown error occurred");
+            } break;
+        }
+    }
 
     return(Result);
 }

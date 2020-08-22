@@ -154,44 +154,11 @@ extern "C" {
 
 CALC(Calc)
 {
-    u32 ErrorCode = 0;
-    if((ErrorCode = setjmp(ErrorJump)) == 0)
-    {
-        struct tokenizer Tokenizer = {};
-        Tokenizer.At = Expression;
-        r64 ComputedResult = ParseExpression(&Tokenizer);
+    struct tokenizer Tokenizer = {};
+    Tokenizer.At = Expression;
+    r64 ComputedResult = ParseExpression(&Tokenizer);
 
-        snprintf(PermanentMemory, ArrayCount(PermanentMemory), "%f", ComputedResult);
-    }
-    else
-    {
-        switch(ErrorCode)
-        {
-            case EXCEPTYPE_OUT_OF_MEMORY:
-            {
-                snprintf(PermanentMemory, ArrayCount(PermanentMemory), "Out of memory");
-            } break;
-            case EXCEPTYPE_INFINITE_RECURSION:
-            {
-                snprintf(PermanentMemory, ArrayCount(PermanentMemory), "Infinite recursion detected");
-                s32 res = _resetstkoflw();
-                if(res)
-                {
-                    printf("Stack reset succeeded\n");
-                }
-                else
-                {
-                    // TODO(rick): Stack is permanently trashed at this point,
-                    // how should we handle this? Force reset? Warn user?
-                    printf("Stack reset failed\n");
-                }
-            } break;
-            default:
-            {
-                snprintf(PermanentMemory, ArrayCount(PermanentMemory), "An unknown error occurred");
-            } break;
-        }
-    }
+    snprintf(PermanentMemory, ArrayCount(PermanentMemory), "%f", ComputedResult);
 
     return(PermanentMemory);
 }
